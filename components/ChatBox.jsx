@@ -80,7 +80,13 @@ export default function ChatBox() {
 
             const data = await res.json();
 
-            const botReplyText = data && data.reply ? data.reply : "No reply received.";
+            const botReplyText =
+                data && data.reply
+                    ? data.reply
+                    : data && data.error
+                        ? `${data.error}${data.details ? " — " + data.details : ""}`
+                        : "No reply received.";
+
             const botMessage = { role: "bot", text: botReplyText };
 
             const finalMessages = [];
@@ -320,7 +326,7 @@ export default function ChatBox() {
                     </div>
                 </div>
             </div>
-            
+
         </div>
     );
 }
