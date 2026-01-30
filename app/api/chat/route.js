@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { supabase } from "../../../lib/supabase";
+import { getSupabase } from "../../../lib/supabase";
+
 
 export async function POST(req) {
+
     try {
+        const supabase = getSupabase();
+
         const body = await req.json();
         const userMessage = body.message;
 
@@ -51,7 +55,7 @@ export async function POST(req) {
                             "Rules:\n" +
                             "1) Answer ONLY using the knowledge base text below.\n" +
                             "2) Do NOT guess or invent details.\n" +
-                            "3) If the answer is not explicitly in the knowledge base, reply: 'I don’t have that information yet. Please contact support or ask about memberships, hours, pricing, or training.'\n"+
+                            "3) If the answer is not explicitly in the knowledge base, reply: 'I don’t have that information yet. Please contact support or ask about memberships, hours, pricing, or training.'\n" +
                             "4) When you give times, prices, or numbers, copy them exactly as written.\n\n" +
                             "Knowledge base:\n" +
                             "5) Keep answers short, professional and customer-friendly.\n\n" +
