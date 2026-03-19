@@ -7,9 +7,9 @@ export async function POST(req) {
         const body = await req.json();
         const userMessage = body.message;
 
-        if (!process.env.ANTHROPIC_API_KEY) {
+        if (!process.env.GOOGLE_API_KEY) {
             return NextResponse.json(
-                { error: "ANTHROPIC_API_KEY is missing" },
+                { error: "GOOGLE_API_KEY is missing" },
                 { status: 500 }
             );
         }
@@ -29,41 +29,45 @@ export async function POST(req) {
             .map((item) => `- ${item.title}: ${item.content}`)
             .join("\n");
 
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-api-key": process.env.ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-            },
-            body: JSON.stringify({
-                model: "claude-haiku-4-5-20251001",
-                max_tokens: 1024,
-                system:
-                    "You are a strict business assistant.\n" +
-                    "Rules:\n" +
-                    "1) Answer ONLY using the knowledge base text below.\n" +
-                    "2) Do NOT guess or invent details.\n" +
-                    "3) If the answer is not explicitly in the knowledge base, reply: 'I don't have that information yet.'\n" +
-                    "4) Keep answers short, professional and customer-friendly.\n\n" +
-                    "Knowledge base:\n" +
-                    knowledgeText,
-                messages: [
-                    { role: "user", content: userMessage }
-                ],
-            }),
-        });
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text:
+                                        "You are a strict business assistant.\n" +
+                                        "Rules:\n" +
+                                        "1) Answer ONLY using the knowledge base text below.\n" +
+                                        "2) Do NOT guess or invent details.\n" +
+                                        "3) If the answer is not in the knowledge base, reply: 'I don't have that information yet.'\n" +
+                                        "4) Keep answers short, professional and customer-friendly.\n\n" +
+                                        "Knowledge base:\n" +
+                                        knowledgeText +
+                                        "\n\nUser question: " +
+                                        userMessage,
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            }
+        );
 
         const result = await response.json();
 
         if (!response.ok) {
             return NextResponse.json(
-                { error: "Anthropic error", details: result },
+                { error: "Google API error", details: result },
                 { status: 500 }
             );
         }
 
-        const reply = result?.content?.[0]?.text;
+        const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!reply) {
             return NextResponse.json(
