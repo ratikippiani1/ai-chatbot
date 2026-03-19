@@ -7,9 +7,9 @@ export async function POST(req) {
         const body = await req.json();
         const userMessage = body.message;
 
-        if (!process.env.GOOGLE_API_KEY) {
+        if (!process.env.OPENAI_API_KEY) {
             return NextResponse.json(
-                { error: "GOOGLE_API_KEY is missing" },
+                { error: "OPENAI_API_KEY is missing" },
                 { status: 500 }
             );
         }
@@ -29,45 +29,43 @@ export async function POST(req) {
             .map((item) => `- ${item.title}: ${item.content}`)
             .join("\n");
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_API_KEY}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text:
-                                        "You are a strict business assistant.\n" +
-                                        "Rules:\n" +
-                                        "1) Answer ONLY using the knowledge base text below.\n" +
-                                        "2) Do NOT guess or invent details.\n" +
-                                        "3) If the answer is not in the knowledge base, reply: 'I don't have that information yet.'\n" +
-                                        "4) Keep answers short, professional and customer-friendly.\n\n" +
-                                        "Knowledge base:\n" +
-                                        knowledgeText +
-                                        "\n\nUser question: " +
-                                        userMessage,
-                                },
-                            ],
-                        },
-                    ],
-                }),
-            }
-        );
+        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [
+                    {
+                        role: "system",
+                        content:
+                            "You are a strict business assistant.\n" +
+                            "Rules:\n" +
+                            "1) Answer ONLY using the knowledge base text below.\n" +
+                            "2) Do NOT guess or invent details.\n" +
+                            "3) If the answer is not explicitly in the knowledge base, reply: 'I don't have that information yet.'\n" +
+                            "4) Keep answers short, professional and customer-friendly.\n\n" +
+                            "Knowledge base:\n" +
+                            knowledgeText,
+                    },
+                    { role: "user", content: userMessage },
+                ],
+                temperature: 0,
+            }),
+        });
 
-        const result = await response.json();
+        const result = await openaiResponse.json();
 
-        if (!response.ok) {
+        if (!openaiResponse.ok) {
             return NextResponse.json(
-                { error: "Google API error", details: result },
+                { error: "OpenAI error", details: result },
                 { status: 500 }
             );
         }
 
-        const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const reply = result?.choices?.[0]?.message?.content;
 
         if (!reply) {
             return NextResponse.json(
